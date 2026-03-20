@@ -61,6 +61,7 @@ function createSettings(): NotebookNavigatorSettings {
     settings.propertyBackgroundColors = {};
     settings.propertyIcons = {};
     settings.propertySortOverrides = {};
+    settings.propertySortValues = {};
     settings.propertyTreeSortOverrides = {};
     return settings;
 }
@@ -108,6 +109,10 @@ describe('PropertyMetadataService cleanupWithValidators', () => {
             [validValueNodeId]: 'lucide-check',
             [staleValueNodeId]: 'lucide-x'
         };
+        settings.propertySortValues = {
+            [validValueNodeId]: 10,
+            [staleValueNodeId]: 20
+        };
         settings.propertyTreeSortOverrides = {
             [validKeyNodeId]: 'alpha-desc',
             [staleKeyNodeId]: 'alpha-asc'
@@ -129,6 +134,9 @@ describe('PropertyMetadataService cleanupWithValidators', () => {
         expect(settings.propertyIcons).toEqual({
             [validValueNodeId]: 'lucide-check'
         });
+        expect(settings.propertySortValues).toEqual({
+            [validValueNodeId]: 10
+        });
         expect(settings.propertyTreeSortOverrides).toEqual({
             [validKeyNodeId]: 'alpha-desc'
         });
@@ -149,6 +157,9 @@ describe('PropertyMetadataService cleanupWithValidators', () => {
         settings.propertyIcons = {
             [valueNodeId]: 'lucide-check'
         };
+        settings.propertySortValues = {
+            [valueNodeId]: 10
+        };
         settings.propertyTreeSortOverrides = {
             [keyNodeId]: 'alpha-asc'
         };
@@ -163,6 +174,7 @@ describe('PropertyMetadataService cleanupWithValidators', () => {
         expect(settings.propertyColors).toEqual({});
         expect(settings.propertyBackgroundColors).toEqual({});
         expect(settings.propertyIcons).toEqual({});
+        expect(settings.propertySortValues).toEqual({});
         expect(settings.propertyTreeSortOverrides).toEqual({});
     });
 });
@@ -229,6 +241,20 @@ describe('PropertyMetadataService sort overrides', () => {
 
         await service.removePropertySortOverride('key:Status');
         expect(service.getPropertySortOverride(normalizedNodeId)).toBeUndefined();
+        expect(provider.saveSettingsAndUpdate).toHaveBeenCalledTimes(2);
+    });
+
+    it('sets and removes property sort values for normalized value node ids', async () => {
+        const settings = createSettings();
+        const provider = new TestSettingsProvider(settings);
+        const service = new PropertyMetadataService(app, provider);
+        const normalizedNodeId = buildPropertyValueNodeId('status', 'todo');
+
+        await service.setPropertySortValue('key:Status=ToDo', 7.9);
+        expect(service.getPropertySortValue(normalizedNodeId)).toBe(7);
+
+        await service.removePropertySortValue('key:Status=ToDo');
+        expect(service.getPropertySortValue(normalizedNodeId)).toBeUndefined();
         expect(provider.saveSettingsAndUpdate).toHaveBeenCalledTimes(2);
     });
 

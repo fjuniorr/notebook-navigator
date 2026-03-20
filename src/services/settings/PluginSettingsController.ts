@@ -71,6 +71,7 @@ import { getDefaultDateFormat, getDefaultTimeFormat } from '../../i18n';
 import {
     clonePinnedNotesRecord,
     isBooleanRecordValue,
+    isNumberRecordValue,
     isPlainObjectRecordValue,
     isStringRecordValue,
     sanitizeRecord
@@ -485,6 +486,10 @@ export class PluginSettingsController {
             this.currentSettings.propertySortOverrides = normalizePropertyNodeRecord(this.currentSettings.propertySortOverrides);
         }
 
+        if (this.currentSettings.propertySortValues) {
+            this.currentSettings.propertySortValues = normalizePropertyNodeRecord(this.currentSettings.propertySortValues);
+        }
+
         if (this.currentSettings.propertyTreeSortOverrides) {
             this.currentSettings.propertyTreeSortOverrides = normalizePropertyKeyRecord(this.currentSettings.propertyTreeSortOverrides);
         }
@@ -807,6 +812,7 @@ export class PluginSettingsController {
             sanitizeRecord(record, isAppearanceValue);
         const sanitizeBooleanMap = (record?: Record<string, boolean>): Record<string, boolean> =>
             sanitizeRecord(record, isBooleanRecordValue);
+        const sanitizeNumberMap = (record?: Record<string, number>): Record<string, number> => sanitizeRecord(record, isNumberRecordValue);
         const sanitizeSettingsSyncMap = (record?: Record<string, SettingSyncMode>): Record<string, SettingSyncMode> =>
             sanitizeRecord(record, isSettingSyncMode);
 
@@ -823,6 +829,7 @@ export class PluginSettingsController {
         this.currentSettings.folderSortOverrides = sanitizeSortMap(this.currentSettings.folderSortOverrides);
         this.currentSettings.tagSortOverrides = sanitizeSortMap(this.currentSettings.tagSortOverrides);
         this.currentSettings.propertySortOverrides = sanitizeSortMap(this.currentSettings.propertySortOverrides);
+        this.currentSettings.propertySortValues = sanitizeNumberMap(this.currentSettings.propertySortValues);
         this.currentSettings.folderTreeSortOverrides = sanitizeAlphaSortOrderMap(this.currentSettings.folderTreeSortOverrides);
         this.currentSettings.tagTreeSortOverrides = sanitizeAlphaSortOrderMap(this.currentSettings.tagTreeSortOverrides);
         this.currentSettings.propertyTreeSortOverrides = sanitizeAlphaSortOrderMap(this.currentSettings.propertyTreeSortOverrides);

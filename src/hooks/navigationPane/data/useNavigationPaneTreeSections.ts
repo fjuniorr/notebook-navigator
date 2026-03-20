@@ -452,6 +452,7 @@ export function useNavigationPaneTreeSections({
             const comparator = createPropertyComparator({
                 order: childSortOverride ?? settings.propertySortOrder,
                 compareAlphabetically: comparePropertyValueNodesAlphabetically,
+                sortValues: settings.propertySortValues,
                 getFrequency: node =>
                     includeDescendantNotes && node.valuePath ? getTotalPropertyNoteCount(keyNode, node.valuePath) : node.notesWithValue.size
             });
@@ -489,6 +490,7 @@ export function useNavigationPaneTreeSections({
         propertySectionBase.propertiesSectionActive,
         settings.interfaceIcons,
         settings.propertySortOrder,
+        settings.propertySortValues,
         settings.propertyTreeSortOverrides,
         settings.showAllPropertiesFolder,
         settings.showNoteCount

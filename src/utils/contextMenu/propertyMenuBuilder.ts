@@ -27,6 +27,25 @@ import { resolveUXIconForMenu } from '../uxIcons';
 import { normalizePropertyNodeId, parsePropertyNodeId } from '../propertyTree';
 import { INTERNAL_NOTEBOOK_NAVIGATOR_API } from '../../api/NotebookNavigatorAPI';
 
+function filterIntegerInput(value: string): string {
+    let filtered = '';
+    let hasSign = false;
+
+    for (let index = 0; index < value.length; index += 1) {
+        const char = value[index];
+        if (char >= '0' && char <= '9') {
+            filtered += char;
+            continue;
+        }
+        if (char === '-' && !hasSign && filtered.length === 0) {
+            filtered += char;
+            hasSign = true;
+        }
+    }
+
+    return filtered;
+}
+
 function resolvePropertyMenuLabel(params: { propertyNodeId: string; propertyNodeName?: string; keyNodeName?: string }): string {
     const { propertyNodeId, propertyNodeName, keyNodeName } = params;
     const parsed = parsePropertyNodeId(propertyNodeId);
@@ -230,6 +249,41 @@ export function buildPropertyMenu(params: PropertyMenuBuilderParams): void {
             modal.open();
         });
     });
+
+    if (propertyNode?.kind === 'value') {
+        menu.addItem((item: MenuItem) => {
+            const currentSortValue = metadataService.getPropertySortValue(normalizedNodeId);
+            const title = currentSortValue === undefined ? 'Set sort value' : `Set sort value (${currentSortValue})`;
+            setAsyncOnClick(item.setTitle(title).setIcon('lucide-arrow-up-narrow-wide'), async () => {
+                const { InputModal } = await import('../../modals/InputModal');
+                const modal = new InputModal(
+                    app,
+                    'Set sort value',
+                    'Enter an integer. Leave empty to clear.',
+                    async value => {
+                        const trimmed = value.trim();
+                        if (!trimmed) {
+                            await metadataService.removePropertySortValue(normalizedNodeId);
+                            return;
+                        }
+
+                        const parsed = Number.parseInt(trimmed, 10);
+                        if (!Number.isFinite(parsed)) {
+                            return;
+                        }
+
+                        await metadataService.setPropertySortValue(normalizedNodeId, parsed);
+                    },
+                    currentSortValue?.toString() ?? '',
+                    {
+                        inputFilter: filterIntegerInput,
+                        submitButtonText: currentSortValue === undefined ? 'Save' : 'Update'
+                    }
+                );
+                modal.open();
+            });
+        });
+    }
 
     if (typeof MenuItem.prototype.setSubmenu === 'function') {
         menu.addItem((item: MenuItem) => {

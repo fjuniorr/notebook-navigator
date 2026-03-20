@@ -30,6 +30,7 @@ import {
 } from '../../utils/propertyTree';
 import { getActivePropertyFields } from '../../utils/vaultProfiles';
 import { BaseMetadataService } from './BaseMetadataService';
+import { ensureRecord, isNumberRecordValue, sanitizeRecord } from '../../utils/recordUtils';
 
 export interface PropertyColorData {
     color?: string;
@@ -159,6 +160,44 @@ export class PropertyMetadataService extends BaseMetadataService {
         return this.getEntityIcon(ItemType.PROPERTY, normalized);
     }
 
+    async setPropertySortValue(nodeId: string, sortValue: number): Promise<void> {
+        const normalized = normalizePropertyNodeId(nodeId);
+        if (!normalized || !Number.isFinite(sortValue)) {
+            return Promise.resolve();
+        }
+
+        return this.saveAndUpdate(settings => {
+            const values = ensureRecord(settings.propertySortValues, isNumberRecordValue);
+            const next = sanitizeRecord(values, isNumberRecordValue);
+            next[normalized] = Math.trunc(sortValue);
+            settings.propertySortValues = next;
+        });
+    }
+
+    async removePropertySortValue(nodeId: string): Promise<void> {
+        const normalized = normalizePropertyNodeId(nodeId);
+        if (!normalized || !Object.prototype.hasOwnProperty.call(this.settingsProvider.settings.propertySortValues ?? {}, normalized)) {
+            return Promise.resolve();
+        }
+
+        return this.saveAndUpdate(settings => {
+            const values = ensureRecord(settings.propertySortValues, isNumberRecordValue);
+            const next = sanitizeRecord(values, isNumberRecordValue);
+            delete next[normalized];
+            settings.propertySortValues = next;
+        });
+    }
+
+    getPropertySortValue(nodeId: string): number | undefined {
+        const normalized = normalizePropertyNodeId(nodeId);
+        if (!normalized) {
+            return undefined;
+        }
+
+        const value = this.settingsProvider.settings.propertySortValues?.[normalized];
+        return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+    }
+
     async setPropertySortOverride(nodeId: string, sortOption: SortOption): Promise<void> {
         const normalized = nodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID ? nodeId : normalizePropertyNodeId(nodeId);
         if (!normalized) {
@@ -246,6 +285,7 @@ export class PropertyMetadataService extends BaseMetadataService {
             this.cleanupMetadata(targetSettings, 'propertyBackgroundColors', validator),
             this.cleanupMetadata(targetSettings, 'propertyIcons', validator),
             this.cleanupMetadata(targetSettings, 'propertySortOverrides', validator),
+            this.cleanupMetadata(targetSettings, 'propertySortValues', validator),
             this.cleanupMetadata(targetSettings, 'propertyTreeSortOverrides', validator),
             this.cleanupMetadata(targetSettings, 'propertyAppearances', validator)
         ]);

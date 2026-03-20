@@ -122,6 +122,9 @@ describe('PropertyOperations settings updates', () => {
         settings.propertySortOverrides = {
             [oldKeyNodeId]: 'title-asc'
         };
+        settings.propertySortValues = {
+            [oldValueNodeId]: 7
+        };
         settings.propertyAppearances = {
             [oldKeyNodeId]: { groupBy: 'date' }
         };
@@ -143,6 +146,9 @@ describe('PropertyOperations settings updates', () => {
         });
         expect(settings.propertySortOverrides).toEqual({
             [newKeyNodeId]: 'title-asc'
+        });
+        expect(settings.propertySortValues).toEqual({
+            [newValueNodeId]: 7
         });
         expect(settings.propertyAppearances).toEqual({
             [newKeyNodeId]: { groupBy: 'date' }
@@ -174,6 +180,10 @@ describe('PropertyOperations settings updates', () => {
             [deletedKeyNodeId]: 'title-asc',
             [keptKeyNodeId]: 'title-desc'
         };
+        settings.propertySortValues = {
+            [deletedValueNodeId]: 1,
+            [keptValueNodeId]: 5
+        };
         settings.propertyAppearances = {
             [deletedKeyNodeId]: { groupBy: 'date' },
             [keptKeyNodeId]: { groupBy: 'none' }
@@ -197,6 +207,9 @@ describe('PropertyOperations settings updates', () => {
         });
         expect(settings.propertySortOverrides).toEqual({
             [keptKeyNodeId]: 'title-desc'
+        });
+        expect(settings.propertySortValues).toEqual({
+            [keptValueNodeId]: 5
         });
         expect(settings.propertyAppearances).toEqual({
             [keptKeyNodeId]: { groupBy: 'none' }

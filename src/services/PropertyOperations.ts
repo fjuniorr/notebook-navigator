@@ -69,6 +69,12 @@ const PROPERTY_NODE_METADATA_ACCESSORS: readonly PropertyMetadataAccessor[] = [
         }
     },
     {
+        read: settings => settings.propertySortValues,
+        write: (settings, next) => {
+            settings.propertySortValues = next as NotebookNavigatorSettings['propertySortValues'];
+        }
+    },
+    {
         read: settings => settings.propertyAppearances,
         write: (settings, next) => {
             settings.propertyAppearances = next as NotebookNavigatorSettings['propertyAppearances'];

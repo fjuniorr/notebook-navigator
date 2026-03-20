@@ -98,16 +98,45 @@ export const comparePropertyValueNodesAlphabetically: PropertyNodeComparator = (
     return (a.valuePath ?? '').localeCompare(b.valuePath ?? '');
 };
 
+export function comparePropertyNodesByCustomSortValue(
+    a: PropertyTreeNode,
+    b: PropertyTreeNode,
+    sortValues: Readonly<Record<string, number>> | undefined,
+    fallback: PropertyNodeComparator
+): number {
+    if (!sortValues) {
+        return fallback(a, b);
+    }
+
+    const valueA = sortValues[a.id];
+    const valueB = sortValues[b.id];
+    const hasValueA = typeof valueA === 'number' && Number.isFinite(valueA);
+    const hasValueB = typeof valueB === 'number' && Number.isFinite(valueB);
+
+    if (hasValueA && hasValueB) {
+        const diff = valueA - valueB;
+        if (diff !== 0) {
+            return diff;
+        }
+    } else if (hasValueA !== hasValueB) {
+        return hasValueA ? -1 : 1;
+    }
+
+    return fallback(a, b);
+}
+
 export function createPropertyComparator(params: {
     order: TagSortOrder;
     compareAlphabetically: PropertyNodeComparator;
     getFrequency: (node: PropertyTreeNode) => number;
+    sortValues?: Readonly<Record<string, number>>;
 }): PropertyNodeComparator {
-    const { order, compareAlphabetically, getFrequency } = params;
+    const { order, compareAlphabetically, getFrequency, sortValues } = params;
     const comparator = createFrequencyComparator<PropertyTreeNode>({
         order,
         compareAlphabetically,
         getFrequency
     });
-    return comparator ?? compareAlphabetically;
+    const fallback = comparator ?? compareAlphabetically;
+    return (a, b) => comparePropertyNodesByCustomSortValue(a, b, sortValues, fallback);
 }

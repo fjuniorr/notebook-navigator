@@ -50,6 +50,7 @@ type MetadataFields = {
     propertyColors: Record<string, string>;
     propertyBackgroundColors: Record<string, string>;
     propertySortOverrides: Record<string, SortOption>;
+    propertySortValues: Record<string, number>;
     propertyTreeSortOverrides: Record<string, AlphaSortOrder>;
     propertyAppearances: Record<string, FolderAppearance>;
 };

@@ -404,6 +404,7 @@ export const DEFAULT_SETTINGS: NotebookNavigatorSettings = {
     propertyColors: sanitizeRecord<string>(undefined),
     propertyBackgroundColors: sanitizeRecord<string>(undefined),
     propertySortOverrides: sanitizeRecord<NotebookNavigatorSettings['propertySortOverrides'][string]>(undefined),
+    propertySortValues: sanitizeRecord<number>(undefined),
     propertyTreeSortOverrides: sanitizeRecord<NotebookNavigatorSettings['propertyTreeSortOverrides'][string]>(undefined),
     propertyAppearances: sanitizeRecord<FolderAppearance>(undefined),
     virtualFolderColors: sanitizeRecord<string>(undefined),

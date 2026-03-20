@@ -361,6 +361,18 @@ export class MetadataService {
         return this.propertyService.setPropertySortOverride(nodeId, sortOption);
     }
 
+    async setPropertySortValue(nodeId: string, sortValue: number): Promise<void> {
+        return this.propertyService.setPropertySortValue(nodeId, sortValue);
+    }
+
+    async removePropertySortValue(nodeId: string): Promise<void> {
+        return this.propertyService.removePropertySortValue(nodeId);
+    }
+
+    getPropertySortValue(nodeId: string): number | undefined {
+        return this.propertyService.getPropertySortValue(nodeId);
+    }
+
     async removePropertySortOverride(nodeId: string): Promise<void> {
         return this.propertyService.removePropertySortOverride(nodeId);
     }
@@ -615,6 +627,7 @@ export class MetadataService {
             settings.propertyBackgroundColors,
             settings.propertyIcons,
             settings.propertySortOverrides,
+            settings.propertySortValues,
             settings.propertyAppearances,
             settings.propertyTreeSortOverrides
         ]);

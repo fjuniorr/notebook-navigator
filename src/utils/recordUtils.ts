@@ -79,6 +79,11 @@ export function isBooleanRecordValue(value: unknown): value is boolean {
     return typeof value === 'boolean';
 }
 
+/** Type guard for finite numeric values in records */
+export function isNumberRecordValue(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+
 /** Type guard for plain object values in records */
 export function isPlainObjectRecordValue(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
