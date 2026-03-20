@@ -243,6 +243,7 @@ export function useListPaneData({
         settings.defaultFolderSort,
         settings.propertySortKey,
         settings.propertySortSecondary,
+        settings.propertySortValues,
         activePropertyFields,
         settings.showProperties,
         settings.folderSortOverrides,

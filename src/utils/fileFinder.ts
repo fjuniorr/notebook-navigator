@@ -284,6 +284,90 @@ function sortNavigationFiles(
     sortFiles(files, sortOption, getCreatedTime, getModifiedTime, getTitle, getPropertySortValue, settings.propertySortSecondary);
 }
 
+function getCustomPropertyValueSortRank(
+    file: TFile,
+    propertyKey: string,
+    propertySortValues: Readonly<Record<string, number>>,
+    db: ReturnType<typeof getDBInstanceOrNull>
+): number | undefined {
+    const properties = db?.getFile(file.path)?.properties;
+    if (!properties || properties.length === 0) {
+        return undefined;
+    }
+
+    let bestRank: number | undefined;
+    for (const entry of properties) {
+        if (casefold(entry.fieldKey) !== propertyKey) {
+            continue;
+        }
+
+        const normalizedValuePath = normalizePropertyTreeValuePath(entry.value);
+        if (!normalizedValuePath || isPropertyKeyOnlyValuePath(normalizedValuePath, entry.valueKind)) {
+            continue;
+        }
+
+        const rank = propertySortValues[buildPropertyValueNodeId(propertyKey, normalizedValuePath)];
+        if (typeof rank !== 'number' || !Number.isFinite(rank)) {
+            continue;
+        }
+
+        if (bestRank === undefined || rank < bestRank) {
+            bestRank = rank;
+        }
+    }
+
+    return bestRank;
+}
+
+function applyPropertyValueSortOrdering(
+    files: TFile[],
+    propertyNodeId: PropertySelectionNodeId,
+    settings: NotebookNavigatorSettings,
+    db: ReturnType<typeof getDBInstanceOrNull>
+): void {
+    if (propertyNodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
+        return;
+    }
+
+    const parsed = parsePropertyNodeId(propertyNodeId);
+    if (!parsed || parsed.valuePath) {
+        return;
+    }
+
+    const propertySortValues = settings.propertySortValues;
+    if (!propertySortValues || Object.keys(propertySortValues).length === 0) {
+        return;
+    }
+
+    const rankCache = new Map<string, number | undefined>();
+    const getRank = (file: TFile): number | undefined => {
+        if (rankCache.has(file.path)) {
+            return rankCache.get(file.path);
+        }
+
+        const rank = getCustomPropertyValueSortRank(file, parsed.key, propertySortValues, db);
+        rankCache.set(file.path, rank);
+        return rank;
+    };
+
+    files.sort((a, b) => {
+        const rankA = getRank(a);
+        const rankB = getRank(b);
+        const hasRankA = rankA !== undefined;
+        const hasRankB = rankB !== undefined;
+
+        if (hasRankA && hasRankB && rankA !== rankB) {
+            return rankA - rankB;
+        }
+
+        if (hasRankA !== hasRankB) {
+            return hasRankA ? -1 : 1;
+        }
+
+        return 0;
+    });
+}
+
 /**
  * Collects all pinned note paths from settings
  */
@@ -758,6 +842,7 @@ export function getFilesForProperty(
 
     const sortOption = getEffectiveSortOption(settings, ItemType.PROPERTY, null, null, propertyNodeId);
     sortNavigationFiles(matchedFiles, settings, app, sortOption);
+    applyPropertyValueSortOrdering(matchedFiles, propertyNodeId, settings, db);
 
     return applyPinnedOrdering(matchedFiles, settings, 'property');
 }

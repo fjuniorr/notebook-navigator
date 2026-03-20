@@ -26,7 +26,7 @@ import type { TagTreeNode } from '../../src/types/storage';
 import type { PropertyItem } from '../../src/storage/IndexedDBStorage';
 import { FILE_VISIBILITY } from '../../src/utils/fileTypeUtils';
 import { getFilesForProperty, getFilesForTag } from '../../src/utils/fileFinder';
-import { buildPropertyKeyNodeId } from '../../src/utils/propertyTree';
+import { buildPropertyKeyNodeId, buildPropertyValueNodeId } from '../../src/utils/propertyTree';
 import { setActivePropertyFields } from '../../src/utils/vaultProfiles';
 import { createTestTFile } from './createTestTFile';
 
@@ -285,6 +285,46 @@ describe('fileFinder getFilesForTag', () => {
 describe('fileFinder getFilesForProperty', () => {
     beforeEach(() => {
         fileDataByPath.clear();
+    });
+
+    it('sorts property key note lists using configured property value ranks', () => {
+        const doneFile = createTestTFile('notes/a-done.md');
+        const backlogFile = createTestTFile('notes/b-backlog.md');
+        const inProgressFile = createTestTFile('notes/c-in-progress.md');
+        const unrankedFile = createTestTFile('notes/d-later.md');
+        const keyOnlyFile = createTestTFile('notes/e-key-only.md');
+
+        setFileProperties(doneFile, [{ fieldKey: 'status', value: 'done', valueKind: 'string' }]);
+        setFileProperties(backlogFile, [{ fieldKey: 'status', value: 'backlog', valueKind: 'string' }]);
+        setFileProperties(inProgressFile, [{ fieldKey: 'status', value: 'in progress', valueKind: 'string' }]);
+        setFileProperties(unrankedFile, [{ fieldKey: 'status', value: 'later', valueKind: 'string' }]);
+        setFileProperties(keyOnlyFile, [{ fieldKey: 'status', value: '', valueKind: 'string' }]);
+
+        const settings = createSettings();
+        setActivePropertyFields(settings, 'status');
+        settings.defaultFolderSort = 'title-asc';
+        settings.propertySortValues = {
+            [buildPropertyValueNodeId('status', 'in progress')]: 10,
+            [buildPropertyValueNodeId('status', 'backlog')]: 20,
+            [buildPropertyValueNodeId('status', 'done')]: 30
+        };
+
+        const app = createAppWithFiles([doneFile, backlogFile, inProgressFile, unrankedFile, keyOnlyFile]);
+        const files = getFilesForProperty(
+            buildPropertyKeyNodeId('status'),
+            settings,
+            { includeDescendantNotes: true, showHiddenItems: false },
+            app,
+            null
+        );
+
+        expect(files.map(file => file.path)).toEqual([
+            inProgressFile.path,
+            backlogFile.path,
+            doneFile.path,
+            unrankedFile.path,
+            keyOnlyFile.path
+        ]);
     });
 
     it('keeps property pins visible in property views when folder pin scoping is enabled', () => {
