@@ -62,6 +62,7 @@ import {
 } from './propertyTree';
 import type { IPropertyTreeProvider } from '../interfaces/IPropertyTreeProvider';
 import type { ITagTreeProvider } from '../interfaces/ITagTreeProvider';
+import type { PropertyTreeNode } from '../types/storage';
 
 interface PinnedDisplayScope {
     restrictToFolderPath?: string;
@@ -319,11 +320,35 @@ function getCustomPropertyValueSortRank(
     return bestRank;
 }
 
+function buildPropertyTreeSortRanks(
+    keyNode: PropertyTreeNode,
+    propertySortValues: Readonly<Record<string, number>>
+): Map<string, number> {
+    const ranks = new Map<string, number>();
+
+    keyNode.children.forEach(childNode => {
+        const rank = propertySortValues[childNode.id];
+        if (typeof rank !== 'number' || !Number.isFinite(rank)) {
+            return;
+        }
+
+        childNode.notesWithValue.forEach(path => {
+            const existingRank = ranks.get(path);
+            if (existingRank === undefined || rank < existingRank) {
+                ranks.set(path, rank);
+            }
+        });
+    });
+
+    return ranks;
+}
+
 function applyPropertyValueSortOrdering(
     files: TFile[],
     propertyNodeId: PropertySelectionNodeId,
     settings: NotebookNavigatorSettings,
-    db: ReturnType<typeof getDBInstanceOrNull>
+    db: ReturnType<typeof getDBInstanceOrNull>,
+    propertyTreeService: IPropertyTreeProvider | null
 ): void {
     if (propertyNodeId === PROPERTIES_ROOT_VIRTUAL_FOLDER_ID) {
         return;
@@ -339,13 +364,23 @@ function applyPropertyValueSortOrdering(
         return;
     }
 
+    const treeRanks = (() => {
+        const keyNode = propertyTreeService?.getKeyNode(parsed.key) ?? null;
+        if (!keyNode) {
+            return null;
+        }
+
+        const ranks = buildPropertyTreeSortRanks(keyNode, propertySortValues);
+        return ranks.size > 0 ? ranks : null;
+    })();
+
     const rankCache = new Map<string, number | undefined>();
     const getRank = (file: TFile): number | undefined => {
         if (rankCache.has(file.path)) {
             return rankCache.get(file.path);
         }
 
-        const rank = getCustomPropertyValueSortRank(file, parsed.key, propertySortValues, db);
+        const rank = treeRanks?.get(file.path) ?? getCustomPropertyValueSortRank(file, parsed.key, propertySortValues, db);
         rankCache.set(file.path, rank);
         return rank;
     };
@@ -842,7 +877,7 @@ export function getFilesForProperty(
 
     const sortOption = getEffectiveSortOption(settings, ItemType.PROPERTY, null, null, propertyNodeId);
     sortNavigationFiles(matchedFiles, settings, app, sortOption);
-    applyPropertyValueSortOrdering(matchedFiles, propertyNodeId, settings, db);
+    applyPropertyValueSortOrdering(matchedFiles, propertyNodeId, settings, db, propertyTreeService);
 
     return applyPinnedOrdering(matchedFiles, settings, 'property');
 }

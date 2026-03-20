@@ -22,7 +22,9 @@ import { DEFAULT_SETTINGS } from '../../src/settings/defaultSettings';
 import type { NotebookNavigatorSettings, VaultProfile } from '../../src/settings/types';
 import type { VisibilityPreferences } from '../../src/types';
 import type { ITagTreeProvider } from '../../src/interfaces/ITagTreeProvider';
+import type { IPropertyTreeProvider } from '../../src/interfaces/IPropertyTreeProvider';
 import type { TagTreeNode } from '../../src/types/storage';
+import type { PropertyTreeNode } from '../../src/types/storage';
 import type { PropertyItem } from '../../src/storage/IndexedDBStorage';
 import { FILE_VISIBILITY } from '../../src/utils/fileTypeUtils';
 import { getFilesForProperty, getFilesForTag } from '../../src/utils/fileFinder';
@@ -92,6 +94,20 @@ function createTagTreeService(overrides: Partial<ITagTreeProvider>): ITagTreePro
     };
 }
 
+function createPropertyTreeService(overrides: Partial<IPropertyTreeProvider>): IPropertyTreeProvider {
+    return {
+        addTreeUpdateListener: () => () => {},
+        hasNodes: () => false,
+        findNode: () => null,
+        getKeyNode: () => null,
+        resolveSelectionNodeId: nodeId => nodeId,
+        collectDescendantNodeIds: () => new Set<string>(),
+        collectFilePaths: () => new Set<string>(),
+        collectFilesForKeys: () => new Set<string>(),
+        ...overrides
+    };
+}
+
 function createTagNode(path: string, displayPath: string): TagTreeNode {
     return {
         name: displayPath.split('/').pop() ?? displayPath,
@@ -116,6 +132,19 @@ function setFileProperties(file: TFile, properties: PropertyItem[]): void {
         tags: existing?.tags ?? null,
         properties: [...properties]
     });
+}
+
+function createPropertyValueNode(key: string, valuePath: string, notesWithValue: Iterable<string>): PropertyTreeNode {
+    return {
+        id: buildPropertyValueNodeId(key, valuePath),
+        kind: 'value',
+        key,
+        valuePath,
+        name: valuePath,
+        displayPath: valuePath,
+        children: new Map(),
+        notesWithValue: new Set(notesWithValue)
+    };
 }
 
 function toSortedPaths(files: TFile[]): string[] {
@@ -325,6 +354,67 @@ describe('fileFinder getFilesForProperty', () => {
             unrankedFile.path,
             keyOnlyFile.path
         ]);
+    });
+
+    it('uses property tree ranks when property selection is backed by the tree service', () => {
+        const nextFile = createTestTFile('notes/b-next.md');
+        const waitingFile = createTestTFile('notes/c-waiting.md');
+        const backlogFile = createTestTFile('notes/a-backlog.md');
+
+        const keyNodeId = buildPropertyKeyNodeId('status');
+        const nextNode = createPropertyValueNode('status', 'next', [nextFile.path]);
+        const waitingNode = createPropertyValueNode('status', 'waiting', [waitingFile.path]);
+        const backlogNode = createPropertyValueNode('status', 'backlog', [backlogFile.path]);
+        const keyNode: PropertyTreeNode = {
+            id: keyNodeId,
+            kind: 'key',
+            key: 'status',
+            valuePath: null,
+            name: 'status',
+            displayPath: 'status',
+            children: new Map([
+                [nextNode.id, nextNode],
+                [waitingNode.id, waitingNode],
+                [backlogNode.id, backlogNode]
+            ]),
+            notesWithValue: new Set([nextFile.path, waitingFile.path, backlogFile.path])
+        };
+
+        const settings = createSettings();
+        setActivePropertyFields(settings, 'status');
+        settings.defaultFolderSort = 'title-asc';
+        settings.propertySortValues = {
+            [nextNode.id]: 1,
+            [waitingNode.id]: 2
+        };
+
+        const app = createAppWithFiles([backlogFile, nextFile, waitingFile]);
+        const propertyTreeService = createPropertyTreeService({
+            hasNodes: () => true,
+            getKeyNode: normalizedKey => (normalizedKey === 'status' ? keyNode : null),
+            findNode: nodeId => {
+                if (nodeId === keyNodeId) {
+                    return keyNode;
+                }
+                return keyNode.children.get(nodeId) ?? null;
+            },
+            collectFilePaths: nodeId => {
+                if (nodeId === keyNodeId) {
+                    return new Set([backlogFile.path, nextFile.path, waitingFile.path]);
+                }
+                return new Set<string>();
+            }
+        });
+
+        const files = getFilesForProperty(
+            keyNodeId,
+            settings,
+            { includeDescendantNotes: true, showHiddenItems: false },
+            app,
+            propertyTreeService
+        );
+
+        expect(files.map(file => file.path)).toEqual([nextFile.path, waitingFile.path, backlogFile.path]);
     });
 
     it('keeps property pins visible in property views when folder pin scoping is enabled', () => {
